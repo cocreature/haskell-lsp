@@ -757,7 +757,7 @@ initializeRequestHandler' (_configHandler,dispatcherProc) mHandler tvarCtx req@(
           static _ Nothing  = Nothing
 
           sync = case textDocumentSync o of
-                  Just x -> Just (J.TDSOptions x)
+                  Just x -> Just (J.TDSKind $ fromJust $ J._change x)
                   Nothing -> Nothing
 
           workspace = J.WorkspaceOptions workspaceFolder
