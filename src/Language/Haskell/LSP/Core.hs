@@ -27,6 +27,7 @@ module Language.Haskell.LSP.Core (
   , reverseSortEdit
   ) where
 
+import Control.Concurrent
 import           Control.Concurrent.STM
 import           Control.Concurrent.Async
 import qualified Control.Exception as E
@@ -302,6 +303,8 @@ handlerMap _ h J.Exit                            =
       case J.fromJSON v :: J.Result J.ExitNotification of
         J.Success n -> captureFromClient (NotExit n) (resCaptureFile ctx)
         J.Error _ -> return ()
+      tId <- myThreadId
+      hPutStrLn stderr $ "Got exit notification: " <> show tId
       logm $ B.pack "haskell-lsp:Got exit, exiting"
       exitSuccess
 handlerMap _ h J.CancelRequest                   = hh nop NotCancelRequestFromClient $ cancelNotificationHandler h

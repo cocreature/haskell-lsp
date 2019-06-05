@@ -59,6 +59,8 @@ runWithHandles :: (Show c) =>
     -> Maybe FilePath
     -> IO Int         -- exit code
 runWithHandles hin hout dp h o captureFp = do
+  tId <- myThreadId
+  hPutStrLn stderr $ "Starting up server " <> show tId
 
   logm $ B.pack "\n\n\n\n\nhaskell-lsp:Starting up server ..."
   hSetBuffering hin NoBuffering
