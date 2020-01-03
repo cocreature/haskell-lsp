@@ -13,6 +13,7 @@ import           Network.URI hiding (authority)
 import qualified System.FilePath.Posix                      as FPP
 import qualified System.FilePath.Windows                    as FPW
 import qualified System.Info
+import GHC.Stack
 
 newtype Uri = Uri { getUri :: Text }
   deriving (Eq,Ord,Read,Show,Generic,A.FromJSON,A.ToJSON,Hashable,A.ToJSONKey,A.FromJSONKey)
@@ -25,7 +26,7 @@ instance NFData Uri
 newtype NormalizedUri = NormalizedUri Text
   deriving (Eq,Ord,Read,Show,Generic,Hashable)
 
-toNormalizedUri :: Uri -> NormalizedUri
+toNormalizedUri :: HasCallStack => Uri -> NormalizedUri
 toNormalizedUri uri =
     NormalizedUri $ T.pack $ escapeURIString isUnescapedInURI $ unEscapeString $ T.unpack t
   where (Uri t) = maybe uri filePathToUri (uriToFilePath uri)
@@ -42,10 +43,10 @@ windowsOS = "mingw32"
 
 type SystemOS = String
 
-uriToFilePath :: Uri -> Maybe FilePath
+uriToFilePath :: HasCallStack => Uri -> Maybe FilePath
 uriToFilePath = platformAwareUriToFilePath System.Info.os
 
-platformAwareUriToFilePath :: String -> Uri -> Maybe FilePath
+platformAwareUriToFilePath :: HasCallStack => String -> Uri -> Maybe FilePath
 platformAwareUriToFilePath systemOS (Uri uri) = do
   URI{..} <- parseURI $ T.unpack uri
   if uriScheme == fileScheme
@@ -55,7 +56,7 @@ platformAwareUriToFilePath systemOS (Uri uri) = do
 
 -- | We pull in the authority because in relative file paths the Uri likes to put everything before the slash
 --   into the authority field
-platformAdjustFromUriPath :: SystemOS
+platformAdjustFromUriPath :: HasCallStack => SystemOS
                           -> Maybe String -- ^ authority
                           -> String -- ^ path
                           -> FilePath
@@ -63,7 +64,9 @@ platformAdjustFromUriPath systemOS authority srcPath =
   (maybe id (++) authority) $
   if systemOS /= windowsOS || null srcPath then srcPath
     else let
-      firstSegment:rest = (FPP.splitDirectories . tail) srcPath  -- Drop leading '/' for absolute Windows paths
+      firstSegment:rest = case (FPP.splitDirectories . tail) srcPath of
+        a:b -> a:b
+        _ -> error $ "Unsupported: " <> srcPath
       drive = if FPW.isDrive firstSegment then FPW.addTrailingPathSeparator firstSegment else firstSegment
       in FPW.joinDrive drive $ FPW.joinPath rest
 
